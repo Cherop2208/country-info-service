@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: country-info-config
+  namespace: country-info
+data:
+  DB_URL: "jdbc:mysql://mysql:3306/countrydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  DB_POOL_SIZE: "10"
+  SOAP_URL: "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso"
+  SOAP_CONNECT_TIMEOUT: "3s"
+  SOAP_READ_TIMEOUT: "10s"
+  JAVA_OPTS: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"

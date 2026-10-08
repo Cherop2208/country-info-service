@@ -1,0 +1,93 @@
+spring:
+  application:
+    name: country-info-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/countrydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      connection-timeout: 5000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update}   # use Flyway + 'validate' in a real production setup
+    properties:
+      hibernate.default_batch_fetch_size: 50
+  cache:
+    type: caffeine
+    cache-names: isoCodes,fullCountryInfo
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=24h
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8080
+  shutdown: graceful
+
+logging:
+  structured:
+    format:
+      console: ecs        # JSON logs incl. MDC (correlationId)
+  level:
+    com.ncba.countryinfo: INFO
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  default-produces-media-type: application/json
+
+soap:
+  country-info:
+    url: ${SOAP_URL:http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso}
+    connect-timeout: ${SOAP_CONNECT_TIMEOUT:3s}
+    read-timeout: ${SOAP_READ_TIMEOUT:10s}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      countryInfoSoap:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - com.ncba.countryinfo.exception.ExternalServiceException
+  retry:
+    instances:
+      countryInfoSoap:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - com.ncba.countryinfo.exception.ExternalServiceException
