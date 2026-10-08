@@ -1,28 +1,33 @@
 spring:
   application:
     name: country-info-service
+
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/countrydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
+    url: ${DB_URL:jdbc:mysql://mysql:3306/countrydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
       connection-timeout: 5000
+
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: ${DDL_AUTO:update}   # use Flyway + 'validate' in a real production setup
+      ddl-auto: ${DDL_AUTO:update}
     properties:
       hibernate.default_batch_fetch_size: 50
+
   cache:
     type: caffeine
     cache-names: isoCodes,fullCountryInfo
     caffeine:
       spec: maximumSize=1000,expireAfterWrite=24h
+
   data:
     web:
       pageable:
         max-page-size: 100
+
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
@@ -33,7 +38,7 @@ server:
 logging:
   structured:
     format:
-      console: ecs        # JSON logs incl. MDC (correlationId)
+      console: ecs
   level:
     com.ncba.countryinfo: INFO
 
@@ -55,6 +60,7 @@ management:
     web:
       exposure:
         include: health,info,prometheus,metrics
+
   endpoint:
     health:
       probes:
@@ -62,6 +68,7 @@ management:
       group:
         readiness:
           include: readinessState,db
+
   metrics:
     tags:
       application: ${spring.application.name}
@@ -82,6 +89,7 @@ resilience4j:
         automatic-transition-from-open-to-half-open-enabled: true
         record-exceptions:
           - com.ncba.countryinfo.exception.ExternalServiceException
+
   retry:
     instances:
       countryInfoSoap:
