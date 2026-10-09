@@ -76,6 +76,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> unexpected(Exception ex, HttpServletRequest req) {
+        // Spring's own web exceptions (unknown route, bad parameter, ...) already know their HTTP status.
+        // Without this they fell through to the 500 below.
+        if (ex instanceof org.springframework.web.ErrorResponse springError) {
+            HttpStatus status = HttpStatus.valueOf(springError.getStatusCode().value());
+            String message = status == HttpStatus.NOT_FOUND
+                    ? "No endpoint found for " + req.getRequestURI()
+                    : springError.getBody().getDetail();
+            return build(status, message, req, null, ex);
+        }
         log.error("Unhandled exception", ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Quote the correlationId when reporting it.", req, null, null);
     }
