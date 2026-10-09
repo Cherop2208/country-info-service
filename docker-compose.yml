@@ -1,21 +1,40 @@
 services:
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: countrydb
-    ports: ["3306:3306"]
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      # 127.0.0.1 forces a real TCP check. "localhost" uses the unix socket and
+      # can report healthy while TCP connections still fail.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 30
+      start_period: 20s
+
   app:
     build: .
+    restart: on-failure
     depends_on:
-      mysql: { condition: service_healthy }
+      mysql:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      DB_URL: jdbc:mysql://mysql:3306/countrydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      # DB_HOST defaults to the compose service name. If container-to-container
+      # networking is blocked on your machine, run with DB_HOST=host.docker.internal
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/countrydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
       DB_USERNAME: root
       DB_PASSWORD: root
-    ports: ["8080:8080"]
+      SOAP_URL: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:
